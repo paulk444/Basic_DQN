@@ -5,5 +5,6 @@ An implementation of a basic deep Q-network. The core of this follows the descri
 Setup
 ---
 This library requires:
-- gym
-- Tensorflow
+- gym (including atari_py)
+- Tensorflow (& keras)
+
