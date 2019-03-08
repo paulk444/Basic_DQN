@@ -146,9 +146,10 @@ class RingBuf_simple:
 
 def copy_model(model):
     """Returns a copy of a keras model."""
-    model.save('tmp_model_b')
-    new_model = keras.models.load_model('tmp_model_b')
-    #os.remove("tmp_model_a")
+    model.save('tmp_model_a')
+    new_model = keras.models.load_model('tmp_model_a')
+    #TODO: delete the tempory model! os.remove("tmp_model_a") ?
+
     return new_model
 
 
@@ -268,7 +269,7 @@ def q_iteration(env, model, target_model, iteration, mem_frames, mem_actions, me
 number_random_actions = 5*10**4 # Should be at least 36. Try 5*10**4?
 number_training_steps = 10 ** 8 # It should start doing well after 10**7??
 save_model_after_steps = 10**5 # Try 10**5?
-mem_size = 10**6 # Try 10**6
+mem_size = 10**5 # Try 10**6
 
 # Make the memories
 mem_frames = RingBuf_simple(mem_size)
@@ -317,7 +318,7 @@ for i in range(number_training_steps):
     action, reward, is_terminal, epsilon = q_iteration(env, model, target_model, iteration, mem_frames, mem_actions, mem_rewards, mem_is_terminal, mem_size)
 
     # Print progress, time, and SAVE the model
-    if np.mod(i+1, 10**2) == 0:
+    if np.mod(i+1, 10**3) == 0:
         print('Training steps done: ', i+1,', Action = ',action,', Reward = ',reward,', Terminal = ',is_terminal,', Epsilon',epsilon)
     if np.mod(i+1, save_model_after_steps) == 0:
         toc = time.time()
