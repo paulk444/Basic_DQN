@@ -81,9 +81,6 @@ def preprocess(img):
 
 # Choose epsilon based on the iteration
 
-greedy_after = 10**6    # 10^6 in the paper
-start_at = 1            # 1 in the paper
-
 def get_epsilon_for_iteration(iteration):
 
     # epsilon should be 1 for 0 iterations, 0.1 for greedy_after iterations, and 0.1 from then onwards
@@ -146,9 +143,9 @@ class RingBuf_simple:
 
 def copy_model(model):
     """Returns a copy of a keras model."""
-    model.save('tmp_model_a')
-    new_model = keras.models.load_model('tmp_model_a')
-    #TODO: delete the tempory model! os.remove("tmp_model_a") ?
+    model.save('tmp_model_x')
+    new_model = keras.models.load_model('tmp_model_x')
+    os.remove('tmp_model_x')
 
     return new_model
 
@@ -263,70 +260,85 @@ def q_iteration(env, model, target_model, iteration, mem_frames, mem_actions, me
 
     return action, reward, is_terminal, epsilon
 
+#----------------------------------------------------------------------------------------------------------------------#
 
-# Now run the DQN to learn Atari!
+def main():
+    import argparse
+    #parser = argparse.ArgumentParser()
+    #parser to name the saved model???
 
-number_random_actions = 5*10**4 # Should be at least 36. Try 5*10**4?
-number_training_steps = 10 ** 8 # It should start doing well after 10**7??
-save_model_after_steps = 10**5 # Try 10**5?
-mem_size = 10**5 # Try 10**6
+    global greedy_after
+    global start_at
+    greedy_after = 10**6    # 1e6 in the paper
+    start_at = 1          # 1 in the paper
 
-# Make the memories
-mem_frames = RingBuf_simple(mem_size)
-mem_actions = RingBuf_simple(mem_size)
-mem_rewards = RingBuf_simple(mem_size)
-mem_is_terminal = RingBuf_simple(mem_size)
+    number_random_actions = 5*10**2 # Should be at least 36. 5e4 in the paper?
+    number_training_steps = 10**8 # It should start doing well after 1e6??
+    save_model_after_steps = 10**3 # Try 1e5?
+    mem_size = 10**3 # 1e6 in the paper?
 
-# Create and reset the Atari env, and process the initial screen
-env = gym.make('BreakoutDeterministic-v4')
-# Probably don't need these 3 lines:
-env.reset()
-prev_screen = env.render(mode='rgb_array')
-preproc_screen = preprocess(prev_screen)
+    Print_progress_after = 10**2
+    Copy_model_after = 10**2 # 1e4 in the blog?
 
-## First make some random actions, and initially fill the memories with these
-for i in range(number_random_actions+1):
+    # Make the memories
+    mem_frames = RingBuf_simple(mem_size)
+    mem_actions = RingBuf_simple(mem_size)
+    mem_rewards = RingBuf_simple(mem_size)
+    mem_is_terminal = RingBuf_simple(mem_size)
 
-    iteration = i
-    # Random action
-    action = env.action_space.sample()
-    new_frame, reward, is_terminal, _ = env.step(action)
+    # Create and reset the Atari env, and process the initial screen
+    env = gym.make('BreakoutDeterministic-v4')
+    # Probably don't need these 3 lines:
+    env.reset()
+    prev_screen = env.render(mode='rgb_array')
+    preproc_screen = preprocess(prev_screen)
 
-    reward = transform_reward(reward)  # Make reward just +1 or -1
-    new_frame = preprocess(new_frame)  # Preprocess frame before saving it
+    ## First make some random actions, and initially fill the memories with these
+    for i in range(number_random_actions+1):
 
-    # Add to memory
-    mem_frames.append(new_frame, iteration)  # The frame we ended up in after the action
-    mem_actions.append(action, iteration)  # The action we did
-    mem_rewards.append(reward, iteration)  # The reward we received after doing the action
-    mem_is_terminal.append(is_terminal, iteration)  # Whether or not the new frame is terminal (assuming is_terminal is the same as is_terminal)
+        iteration = i
+        # Random action
+        action = env.action_space.sample()
+        new_frame, reward, is_terminal, _ = env.step(action)
+
+        reward = transform_reward(reward)  # Make reward just +1 or -1
+        new_frame = preprocess(new_frame)  # Preprocess frame before saving it
+
+        # Add to memory
+        mem_frames.append(new_frame, iteration)  # The frame we ended up in after the action
+        mem_actions.append(action, iteration)  # The action we did
+        mem_rewards.append(reward, iteration)  # The reward we received after doing the action
+        mem_is_terminal.append(is_terminal, iteration)  # Whether or not the new frame is terminal (assuming is_terminal is the same as is_terminal)
 
 
-## Now do actions using the NN, and train as we go...
-# (Initialise the model (the NN) <-- this has already been done above)
-tic = 0
-print('Finished the', number_random_actions, 'random actions...')
+    ## Now do actions using the NN, and train as we go...
+    # (Initialise the model (the NN) <-- this has already been done above)
+    tic = 0
+    print('Finished the', number_random_actions, 'random actions...')
 
-for i in range(number_training_steps):
+    for i in range(number_training_steps):
 
-    iteration = number_random_actions+i
+        iteration = number_random_actions+i
 
-    # Copy model every now and then and fit to this: makes it more stable
-    if np.mod(i, 10**4) == 0:
-        target_model = copy_model(model)
+        # Copy model every now and then and fit to this: makes it more stable
+        if np.mod(i, Copy_model_after) == 0:
+            target_model = copy_model(model)
 
-    action, reward, is_terminal, epsilon = q_iteration(env, model, target_model, iteration, mem_frames, mem_actions, mem_rewards, mem_is_terminal, mem_size)
+        action, reward, is_terminal, epsilon = q_iteration(env, model, target_model, iteration, mem_frames, mem_actions, mem_rewards, mem_is_terminal, mem_size)
 
-    # Print progress, time, and SAVE the model
-    if np.mod(i+1, 10**3) == 0:
-        print('Training steps done: ', i+1,', Action = ',action,', Reward = ',reward,', Terminal = ',is_terminal,', Epsilon',epsilon)
-    if np.mod(i+1, save_model_after_steps) == 0:
-        toc = time.time()
-        print('Time: ', np.round(toc - tic), end=" ")  # (The end thing makes it print on the same line)
-        tic = time.time()
-        # Save model
-        file_name = 'saved_models/Mac1_'
-        file_name += str(i + 1)
-        model.save(file_name)
-        print(', model saved')
+        # Print progress, time, and SAVE the model
+        if np.mod(i+1, Print_progress_after) == 0:
+            print('Training steps done: ', i+1,', Action = ',action,', Reward = ',reward,', Terminal = ',is_terminal,', Epsilon',epsilon)
+        if np.mod(i+1, save_model_after_steps) == 0:
+            toc = time.time()
+            print('Time: ', np.round(toc - tic), end=" ")  # (The end thing makes it print on the same line)
+            tic = time.time()
+            # Save model
+            file_name = 'saved_models/Test1_'
+            file_name += str(i + 1)
+            model.save(file_name)
+            print(', model saved')
 
+
+if __name__ == '__main__':
+    main()
