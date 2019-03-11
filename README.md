@@ -14,7 +14,7 @@ This library requires:
 
 ```Teach_Breakout.py```: This script trains a DQN to play Breakout. Without specifying any arguments, 
 we use the hyperparameters discussed in the [blog](https://becominghuman.ai/lets-build-an-atari-ai-part-0-intro-to-rl-9b2c5336e0ec), and every 100k training steps the 
-model is saved as "saved_models/Run_[# training steps]".
+model is saved as "saved_models/Run_[# training steps]" (so you need to create the directory "saved_models/" before running the script).
 
 ```View_Breakout.py```: This is used to view a model that has already been trained. Use argument "-m [name of model]"
  to specify which model to load. By default, it loads "Trained_models/7M_steps".
