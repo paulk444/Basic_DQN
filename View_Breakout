@@ -29,7 +29,7 @@ def main():
 
     number_viewing_steps = 2000
 
-    print('Running for ',number_viewing_steps,' steps, with ',random_action_fraction,' of the actions random.')
+    print('Running for ',number_viewing_steps,' viewing steps, with ',random_action_fraction,' of the actions being random.')
 
     # Reset the Atari env, and process the initial screen
     env = gym.make('BreakoutDeterministic-v4')
@@ -41,7 +41,7 @@ def main():
     new_state = np.zeros((105, 80, 4))
 
 
-    # First make up to 30 random actions, so that each time we view the model it's different
+    # First make up to 10 random actions, so that each time we view the model it's different
 
     number_random_this_episode = random.sample(range(1, 10), 1)[0]
     print('First doing ',number_random_this_episode+4,' random actions')

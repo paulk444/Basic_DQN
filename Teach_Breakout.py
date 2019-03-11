@@ -124,7 +124,7 @@ def copy_model(model):
     """Returns a copy of a keras model."""
     model.save('tmp_model_x')
     new_model = keras.models.load_model('tmp_model_x')
-    os.remove('tmp_model_x') # delete the model once it's been loaded
+    os.remove('tmp_model_x') # delete the model once it's been loaded. (Not clear if deleting the model is working correctly?)
     return new_model
 
 
@@ -253,9 +253,10 @@ def main():
     args = parser.parse_args()
 
 
-    # Other things to modify
     global greedy_after
     global start_at
+
+    # Other things to modify
     greedy_after = 10**6    # 1e6 in the paper
     start_at = 1          # 1 in the paper
     number_training_steps = 10**8 # It should start doing well after 1e6??
