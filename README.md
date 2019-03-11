@@ -2,7 +2,7 @@
 
 An implementation of a basic deep Q-network. The core of this follows the description in this [blog](https://becominghuman.ai/lets-build-an-atari-ai-part-0-intro-to-rl-9b2c5336e0ec), which uses DeepMind's paper 
 [Playing Atari with Deep Reinforcement Learning](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf). My DQN is pretty 
-basic, and doesn't utilise all of the techniques discussed in the blog and paper. As a result, it converges very slowly! This DQN implementation is also very basic in the sense that the only real output is a trained DQN model; it doesn't produce or record any metrics that can be used to understand and diagnose the DQN.
+basic, and doesn't utilise all of the techniques discussed in the blog and paper. As a result, it converges very slowly! This DQN implementation is also very basic in the sense that the only real output is a trained DQN model; it doesn't produce or record any metrics that can be used to understand and diagnose the training of the DQN.
 
 ## Setup
 
