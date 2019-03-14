@@ -17,7 +17,6 @@ from keras import layers
 from keras.models import Model
 
 
-
 # Make the model
 
 ATARI_SHAPE = (105, 80, 4)  # input image size to model (but note that we actually have to input shape: (batch,105,80,4))
