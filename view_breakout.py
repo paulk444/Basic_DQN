@@ -3,20 +3,21 @@
 This script loads a pre-trained model, then runs Breakout to view the model playing.
 """
 
-import gym
+import argparse
 import random
-import numpy as np
 import time
-from keras.models import load_model
-from Teach_Breakout import preprocess, choose_best_action
 
+import gym
+import numpy as np
+from keras.models import load_model
+
+from teach_breakout import choose_best_action, preprocess
 
 
 def main():
     """
     Use a pre-trained model to play Breakout
     """
-    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--model_name', help="Name of the model to be used", default='Trained_models/8M_steps', type=str)
     args = parser.parse_args()
@@ -37,6 +38,7 @@ def main():
     prev_screen = env.render(mode='rgb_array')
     frame = preprocess(prev_screen)
 
+    # TODO: Remove magic numbers here:
     state = np.zeros((105, 80, 4))
     new_state = np.zeros((105, 80, 4))
 
@@ -51,7 +53,7 @@ def main():
 
 
     # Now make 4 more random actions, to make the first state (the model takes a state as input)
-
+    # TODO: For loop instead of this silly cutting and pasting!!
     state[:,:,3] = frame
     # Random action
     action = env.action_space.sample()
@@ -86,6 +88,8 @@ def main():
 
     for i in range(number_viewing_steps):
 
+        # TODO: Normally in evaulating the model we just do greedy. The reason I do it here is because sometimes it
+        #  doesn't ask for a new ball... but there's a better way to do this!
         # Choose, make and view action
         if random.random() < random_action_fraction:
             action = env.action_space.sample()
@@ -97,6 +101,7 @@ def main():
         env.render() # View
         time.sleep(0.03) # Pause, as it's too fast otherwise
 
+        # TODO: Replace with for loop
         new_state[:,:,0] = frame
         new_state[:, :, 1] = state[:, :, 0]
         new_state[:, :, 2] = state[:, :, 1]
