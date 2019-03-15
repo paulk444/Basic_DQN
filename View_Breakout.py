@@ -18,7 +18,7 @@ def main():
     """
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--model_name', help="Name of the model to be used", default='Trained_models/7M_steps', type=str)
+    parser.add_argument('-m', '--model_name', help="Name of the model to be used", default='Trained_models/8M_steps', type=str)
     args = parser.parse_args()
 
     # Load the model!

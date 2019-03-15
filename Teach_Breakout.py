@@ -1,4 +1,3 @@
-
 """
 We make a DQN agent for playing Atari games, following (and modifying/extended) the tutorial here:
 https://becominghuman.ai/lets-build-an-atari-ai-part-1-dqn-df57e8ff3b26
@@ -11,16 +10,15 @@ import random
 import numpy as np
 import time
 import os
-from tensorflow import keras
 import keras
 from keras import layers
 from keras.models import Model
 
-
 # Make the model
 
-ATARI_SHAPE = (105, 80, 4)  # input image size to model (but note that we actually have to input shape: (batch,105,80,4))
+ATARI_SHAPE = (105, 80, 4)  # input image size to model (but note that we actually have to input (batch,105,80,4))
 ACTION_SIZE = 4
+
 
 def atari_model_mask():
     # With the functional API we need to define the inputs.
@@ -60,12 +58,15 @@ def atari_model_mask():
 def transform_reward(reward):
     return np.sign(reward)
 
+
 # Preprocess the frames
 def to_grayscale(img):
     return np.mean(img, axis=2).astype(np.uint8)
 
+
 def downsample(img):
     return img[::2, ::2]
+
 
 def preprocess(img):
     return to_grayscale(downsample(img))
@@ -100,7 +101,7 @@ def choose_best_action(model, state):
 def make_state(mem_frames, iteration):
     state = np.zeros((105, 80, 4))
     for i in range(4):
-        state[:, :, i] = mem_frames.recall(iteration-i) # Recalls the frame associated to iteration (and for (-i))
+        state[:, :, i] = mem_frames.recall(iteration - i)  # Recalls the frame associated to iteration (and for (-i))
     return state
 
 
@@ -124,7 +125,7 @@ def copy_model(model):
     """Returns a copy of a keras model."""
     model.save('tmp_model_x')
     new_model = keras.models.load_model('tmp_model_x')
-    os.remove('tmp_model_x') # delete the model once it's been loaded. (Not clear if deleting the model is working correctly?)
+    os.remove('tmp_model_x')  # delete the model once it's been loaded. (Not clear if deleting the model is working correctly?)
     return new_model
 
 
@@ -161,7 +162,7 @@ def fit_batch_target(model, target_model, gamma, start_states, actions, rewards,
 
     # Fit the keras model, using the mask
     model.fit([start_states, one_hot_actions], one_hot_actions * Q_values[:, None],
-        epochs=1, batch_size=len(start_states), verbose=0) # Should it be epochs=1??
+              epochs=1, batch_size=len(start_states), verbose=0)  # Should it be epochs=1??
 
 
 def make_n_fit_batch(model, target_model, gamma, iteration, mem_size, mem_frames, mem_actions, mem_rewards, mem_is_terminal, number_in_batch):
@@ -184,11 +185,11 @@ def make_n_fit_batch(model, target_model, gamma, iteration, mem_size, mem_frames
     rewards = list()  # List
     is_terminals = list()  # List
 
-    for i in range(len(indices_chosen)): # Probably more efficient way to do this: "for index in ?(indices_chosen)?"
-        index = indices_chosen[i] # index corresponds to the iterations
+    for i in range(len(indices_chosen)):  # Probably more efficient way to do this: "for index in ?(indices_chosen)?"
+        index = indices_chosen[i]  # index corresponds to the iterations
         start_states[i, :, :, :] = make_state(mem_frames, index - 1)
-        next_states[i, :, :, :] = make_state(mem_frames, index) # State given by index was arrived at by taking action given by index and reward received is give by index.
-                                                                # In contrast, index-1 labels the previous state, before the action was taken
+        next_states[i, :, :, :] = make_state(mem_frames, index)  # State given by index was arrived at by taking action given by index and reward received is give by index.
+        # In contrast, index-1 labels the previous state, before the action was taken
         actions[i] = mem_actions.recall(index)
 
         rewards.append(mem_rewards.recall(index))
@@ -219,10 +220,10 @@ def q_iteration(env, model, target_model, iteration, mem_frames, mem_actions, me
     new_frame = preprocess(new_frame)  # Preprocess frame before saving it
 
     # Add to memory
-    mem_frames.append(new_frame, iteration+1)  # The frame we ended up in after the action
-    mem_actions.append(action, iteration+1)  # The action we did
-    mem_rewards.append(reward, iteration+1)  # The reward we received after doing the action
-    mem_is_terminal.append(is_terminal, iteration+1)  # Whether or not the new frame is terminal
+    mem_frames.append(new_frame, iteration + 1)  # The frame we ended up in after the action
+    mem_actions.append(action, iteration + 1)  # The action we did
+    mem_rewards.append(reward, iteration + 1)  # The reward we received after doing the action
+    mem_is_terminal.append(is_terminal, iteration + 1)  # Whether or not the new frame is terminal
 
     # Make then fit a batch (gamma=0.99, num_in_batch=?)
     number_in_batch = 32
@@ -234,7 +235,8 @@ def q_iteration(env, model, target_model, iteration, mem_frames, mem_actions, me
 
     return action, reward, is_terminal, epsilon
 
-#----------------------------------------------------------------------------------------------------------------------#
+
+# ----------------------------------------------------------------------------------------------------------------------#
 
 def main():
     """
@@ -243,30 +245,28 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--num_rand_acts', help="Random actions before learning starts",
-                        default=5*10**4, type=int)
+                        default=5 * 10 ** 4, type=int)
     parser.add_argument('-s', '--save_after', help="Save after this number of training steps",
-                        default=10**5, type=int)
+                        default=10 ** 5, type=int)
     parser.add_argument('-m', '--mem_size', help="Size of the experience replay memory",
-                        default=10**6, type=int)
+                        default=10 ** 6, type=int)
     parser.add_argument('-sn', '--save_name', help="Name of the saved models", default=None, type=str)
-    #parser.add_argument('-g', '--greedy_after', default=1e6, type=int)
+    # parser.add_argument('-g', '--greedy_after', default=1e6, type=int)
     args = parser.parse_args()
-
 
     global greedy_after
     global start_at
 
     # Other things to modify
-    greedy_after = 10**6    # 1e6 in the paper
-    start_at = 1          # 1 in the paper
-    number_training_steps = 10**8 # It should start doing well after 1e6??
+    greedy_after = 10 ** 6  # 1e6 in the paper
+    start_at = 1  # 1 in the paper
+    number_training_steps = 10 ** 8  # It should start doing well after 1e6??
     Print_progress_after = 10 ** 2
     Copy_model_after = 10 ** 4  # 1e4 in the blog?
 
-
-    number_random_actions = args.num_rand_acts # Should be at least 36. 5e4 in the paper?
-    save_model_after_steps = args.save_after # Try 1e5?
-    mem_size = args.mem_size # 1e6 in the paper?
+    number_random_actions = args.num_rand_acts  # Should be at least 36. 5e4 in the paper?
+    save_model_after_steps = args.save_after  # Try 1e5?
+    mem_size = args.mem_size  # 1e6 in the paper?
 
     print('num_rand_acts = ', number_random_actions, ', save_after = ', save_model_after_steps, ', mem_size = ', mem_size)
 
@@ -286,12 +286,9 @@ def main():
     env = gym.make('BreakoutDeterministic-v4')
     # Probably don't need these 3 lines:
     env.reset()
-    prev_screen = env.render(mode='rgb_array')
-    preproc_screen = preprocess(prev_screen)
 
-    ## First make some random actions, and initially fill the memories with these
-    for i in range(number_random_actions+1):
-
+    # First make some random actions, and initially fill the memories with these
+    for i in range(number_random_actions + 1):
         iteration = i
 
         # Random action
@@ -307,14 +304,13 @@ def main():
         mem_rewards.append(reward, iteration)  # The reward we received after doing the action
         mem_is_terminal.append(is_terminal, iteration)  # Whether or not the new frame is terminal (assuming is_terminal is the same as is_terminal)
 
-
     # Now do actions using the DNN, and train as we go...
     print('Finished the', number_random_actions, 'random actions...')
-    tic=0
+    tic = 0
 
     for i in range(number_training_steps):
 
-        iteration = number_random_actions+i
+        iteration = number_random_actions + i
 
         # Copy model every now and then and fit to this: makes it more stable
         if np.mod(i, Copy_model_after) == 0:
@@ -323,11 +319,11 @@ def main():
         action, reward, is_terminal, epsilon = q_iteration(env, model, target_model, iteration, mem_frames, mem_actions, mem_rewards, mem_is_terminal, mem_size)
 
         # Print progress, time, and SAVE the model
-        if np.mod(i+1, Print_progress_after) == 0:
-            #print('Training steps done: ', i + 1, ', Action = ', action, ', Reward = ', reward, ', Terminal = ',
+        if np.mod(i + 1, Print_progress_after) == 0:
+            # print('Training steps done: ', i + 1, ', Action = ', action, ', Reward = ', reward, ', Terminal = ',
             # is_terminal, ', Epsilon', epsilon)
-            print('Training steps done: ', i+1,', Epsilon',epsilon)
-        if np.mod(i+1, save_model_after_steps) == 0:
+            print('Training steps done: ', i + 1, ', Epsilon', epsilon)
+        if np.mod(i + 1, save_model_after_steps) == 0:
             toc = time.time()
             print('Time since last save: ', np.round(toc - tic), end=" ")  # (The end thing makes it print on the same
             # line)
