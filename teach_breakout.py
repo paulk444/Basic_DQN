@@ -9,6 +9,7 @@ import argparse
 import os
 import random
 import time
+import logging
 
 import gym
 import keras
@@ -94,10 +95,10 @@ def get_epsilon_for_iteration(iteration):
 
 # Choose the best action
 def choose_best_action(model, state):
+    # TODO: Replace magic numbers in this function
     # Need state in correct form/shape
     state_batch = np.zeros((1, 105, 80, 4))
     state_batch[0, :, :, :] = state
-
     Q_values = model.predict([state_batch, np.ones((1, 4))])  # ASSUMING ONLY 4 ACTIONS (e.g. Breakout)
     action = np.argmax(Q_values)
     return action
@@ -140,10 +141,11 @@ def copy_model(model):
 
 
 # Turn the actions into one-hot-encoded actions (required to use the mask)
+# TODO: Only need to input actions, then use len(actions)
 def into_one_hot(number_in_batch, actions):
     one_hot_actions = np.zeros((number_in_batch, ACTION_SIZE))
     for i in range(number_in_batch):
-        for j in range(4):
+        for j in range(ACTION_SIZE):
             if j == actions[i]:
                 one_hot_actions[i, j] = 1
     return one_hot_actions
@@ -190,7 +192,7 @@ def make_n_fit_batch(
         # In this case, sample 'number_in_batch' numbers from 4 to 'iterations'
         # (We use 4 so that there are 5 frames minimum, so we can still make 2 states (because each state is the frame
         # plus the previous 3 frames))
-        indices_chosen = random.sample(range(ACTION_SIZE, iteration), number_in_batch)
+        indices_chosen = random.sample(range(4, iteration), number_in_batch)
     else:
         # Now the memory is full, so we can take any elements from it
         indices_chosen = random.sample(range(0, mem_size), number_in_batch)
@@ -233,10 +235,11 @@ def q_iteration(env, model, target_model, iteration, mem_frames, mem_actions, me
         action = env.action_space.sample()
     else:
         action = choose_best_action(model, start_state)
-    # Play one game iteration (note: according to a paper, you should actually play 4 times here)
+    # Play one game iteration
+    # TODO: According to the paper, you should actually play 4 times here
     new_frame, reward, is_terminal, _ = env.step(action)
 
-    # TODO: These next 6-7 lines can be factored out into a helper function (they're dublicated below)
+    # TODO: These next 6-7 lines can be factored out into a helper function (they're duplicated below)
     reward = transform_reward(reward)  # Make reward just +1 or -1
     new_frame = preprocess(new_frame)  # Preprocess frame before saving it
     # Add to memory
@@ -259,7 +262,7 @@ def q_iteration(env, model, target_model, iteration, mem_frames, mem_actions, me
 
 
 def main():
-    """ Train the DNN to play Breakout
+    """ Train the DQN to play Breakout
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--num_rand_acts', help="Random actions before learning starts",
@@ -272,19 +275,20 @@ def main():
     # parser.add_argument('-g', '--greedy_after', default=1e6, type=int)
     args = parser.parse_args()
 
+    # Set up logging:
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     # Other things to modify
     number_training_steps = 10 ** 8  # It should start doing well after 1e6??
     print_progress_after = 10 ** 2
     Copy_model_after = 10 ** 4  # 1e4 in the blog?
 
-    number_random_actions = args.num_rand_acts  # Should be at least 36. 5e4 in the paper?
+    number_random_actions = args.num_rand_acts  # Should be at least 33 (batch_size+1). 5e4 in the paper?
     save_model_after_steps = args.save_after  # Try 1e5?
     mem_size = args.mem_size  # 1e6 in the paper?
 
-    # TODO: Consider using Python logging instead of print see https://docs.python-guide.org/writing/logging/
-    print('num_rand_acts = ', number_random_actions, ', save_after = ',
-          save_model_after_steps, ', mem_size = ', mem_size)
-
+    logger.info(' num_rand_acts = %s, save_after = %s, mem_size = %s', number_random_actions, save_model_after_steps, mem_size)
 
     # Make the model
     model = atari_model_mask()
@@ -300,13 +304,13 @@ def main():
 
     # Create and reset the Atari env, and process the initial screen:
     env = gym.make('BreakoutDeterministic-v4')
-    # Probably don't need these 3 lines:
     env.reset()
 
-    # TODO: Factor out this random actions section into a helper function
+    # TODO:  Rename i to iteration, and combined the two loops below. And factor out the random actions loop and the
+    #  learning loop into two helper functions.
+
     # First make some random actions, and initially fill the memories with these
-    for i in range(number_random_actions + 1):
-        # TODO: Better if I renamed i to iteration, and combined this loop with the next
+    for i in range(number_random_actions+1):
         iteration = i
         # Random action
         action = env.action_space.sample()
@@ -321,11 +325,10 @@ def main():
         mem_rewards.append(reward, iteration)  # The reward we received after doing the action
         mem_is_terminal.append(is_terminal, iteration)  # Whether or not the new frame is terminal
 
-    # Now do actions using the DNN, and train as we go...
-    print('Finished the', number_random_actions, 'random actions...')
+    # Now do actions using the DQN, and train as we go...
+    print('Finished the {} random actions...'.format(number_random_actions))
     tic = 0
 
-    # TODO: Factor out this for loop into a helper function:
     for i in range(number_training_steps):
 
         iteration = number_random_actions + i
@@ -339,25 +342,15 @@ def main():
 
         # Print progress, time, and SAVE the model
         if (i + 1) % print_progress_after == 0:
-            # TODO: Try Python's string format: https://pyformat.info/ and
-            #  https://docs.python.org/3/library/string.html#string-formatting
-            print('Training steps done: ', i + 1, ', Epsilon', epsilon)
+            print('Training steps done: {}, Epsilon: {}'.format(i + 1, epsilon))
         if (i + 1) % save_model_after_steps == 0:
             toc = time.time()
-            print('Time since last save: ', np.round(toc - tic), end=" ")  # (The end thing makes it print on the same
-            # line)
+            print('Time since last save: {}'.format(np.round(toc - tic)), end=" ")
             tic = time.time()
-            # Save model
-            file_name = 'saved_models/Run_'
-            file_name += args.save_name
-            file_name += str(i + 1)
+            # Save model:
+            file_name = os.path.join('saved_models', 'Run_{}_{}'.format(args.save_name, i + 1))
             model.save(file_name)
-            print(', model saved')
-            # TODO: Above: I could do it in one line:
-            #   file_name = os.path.join('saved_models', 'Run_{}_{}'.format(args.save_name, i + 1))
-            #   Or in 3.6 and above:
-            #   file_name = os.path.join('saved_models', f'Run_{args.save_name}_{i + 1}')
-
+            print('; model saved')
 
 if __name__ == '__main__':
     main()

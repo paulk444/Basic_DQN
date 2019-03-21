@@ -8,6 +8,7 @@ Tests_n_old/
 # Files etc:
 tmp_model_a
 tmp_model_b
+tmp_model_t
 nohup.out
 
 # Scripts:
